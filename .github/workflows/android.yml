@@ -26,7 +26,7 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      # Jednorazowo wygeneruj wrapper, jeżeli go brak
+      # (jeśli brak gradlew) wygeneruj wrapper jednorazowo
       - name: Generate Gradle Wrapper (if missing)
         uses: gradle/gradle-build-action@v3
         with:
@@ -37,7 +37,6 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      # Zalecana akcja – ustawia cache, telemetry etc.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
 
