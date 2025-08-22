@@ -35,19 +35,30 @@ import org.osmdroid.views.overlay.Polyline
 import com.example.bikelogger.tracking.LocationService
 import com.example.bikelogger.util.GpxWriter
 import com.example.bikelogger.util.ShareUtil
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     private val vm: RideViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Osmdroid wymaga user agenta
-        Configuration.getInstance().userAgentValue = packageName
 
-        setContent {
-            // Jeżeli masz swój Theme, możesz go tu owinąć
-            Root(vm)
-        }
+        // ✅ Solidna inicjalizacja Osmdroid (bez dodatkowych zależności)
+        val appCtx = applicationContext
+        Configuration.getInstance().userAgentValue = packageName
+        // Zamiast PreferenceManager – wczytujemy własne SharedPreferences
+        val prefs = appCtx.getSharedPreferences("osmdroid_prefs", Context.MODE_PRIVATE)
+        Configuration.getInstance().load(appCtx, prefs)
+
+        // Ustaw bezpieczne ścieżki cache wewnątrz katalogu appki
+        val base = File(appCtx.getExternalFilesDir(null), "osmdroid")
+        val cache = File(base, "tiles")
+        if (!base.exists()) base.mkdirs()
+        if (!cache.exists()) cache.mkdirs()
+        Configuration.getInstance().osmdroidBasePath = base
+        Configuration.getInstance().osmdroidTileCache = cache
+
+        setContent { Root(vm) }
     }
 }
 
