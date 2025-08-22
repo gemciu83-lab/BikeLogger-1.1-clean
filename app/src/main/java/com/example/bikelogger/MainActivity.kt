@@ -1,4 +1,3 @@
-
 package com.example.bikelogger
 
 import android.Manifest
@@ -24,24 +23,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.bikelogger.tracking.LocationService
-import com.example.bikelogger.util.GpxWriter
-import com.example.bikelogger.util.ShareUtil
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
+import com.example.bikelogger.tracking.LocationService
+import com.example.bikelogger.util.GpxWriter
+import com.example.bikelogger.util.ShareUtil
 
 class MainActivity : ComponentActivity() {
     private val vm: RideViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Osmdroid wymaga user agenta
         Configuration.getInstance().userAgentValue = packageName
-        setContent { Root(vm) }
+
+        setContent {
+            // Jeżeli masz swój Theme, możesz go tu owinąć
+            Root(vm)
+        }
     }
 }
 
@@ -54,7 +60,11 @@ fun Root(vm: RideViewModel) {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(if (route == "counter") "Licznik rowerowy (OSM)" else "Przejazdy") })
+            TopAppBar(
+                title = {
+                    Text(if (route == "counter") "Licznik rowerowy (OSM)" else "Przejazdy")
+                }
+            )
         },
         bottomBar = {
             NavigationBar {
@@ -73,13 +83,13 @@ fun Root(vm: RideViewModel) {
             }
         }
     ) { padding ->
-        androidx.navigation.compose.NavHost(
+        NavHost(
             navController = nav,
             startDestination = "counter",
             modifier = Modifier.padding(padding)
         ) {
-            androidx.navigation.compose.composable("counter") { CounterScreen(vm) }
-            androidx.navigation.compose.composable("rides") { RidesScreen(vm) }
+            composable("counter") { CounterScreen(vm) }
+            composable("rides") { RidesScreen(vm) }
         }
     }
 }
@@ -126,8 +136,13 @@ fun CounterScreen(vm: RideViewModel) {
                 fontWeight = FontWeight.Bold
             )
             Text(
-                if (ui.isPaused) "Auto-pauza" else if (ui.isRecording) "Nagrywanie…" else "Gotowy",
-                color = if (ui.isPaused) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
+                when {
+                    ui.isPaused -> "Auto-pauza"
+                    ui.isRecording -> "Nagrywanie…"
+                    else -> "Gotowy"
+                },
+                color = if (ui.isPaused) MaterialTheme.colorScheme.tertiary
+                        else MaterialTheme.colorScheme.primary
             )
         }
 
@@ -174,7 +189,12 @@ fun CounterScreen(vm: RideViewModel) {
 
             OutlinedButton(
                 onClick = {
-                    val file = GpxWriter.saveGpx(ctx, ui.path, ui.startTimestampMs, System.currentTimeMillis())
+                    val file = GpxWriter.saveGpx(
+                        ctx,
+                        ui.path,
+                        ui.startTimestampMs,
+                        System.currentTimeMillis()
+                    )
                     vm.onSavedAndIndex(ctx, file)
                 },
                 modifier = Modifier.weight(1f),
@@ -194,13 +214,24 @@ fun CounterScreen(vm: RideViewModel) {
 @Composable
 private fun WindCard(ui: UiState) {
     val dirTo = if (ui.wind.dirDegFrom >= 0) (ui.wind.dirDegFrom + 180) % 360 else -1
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
         Column(Modifier.padding(12.dp)) {
             Text("Wiatr", style = MaterialTheme.typography.labelMedium)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    if (!ui.wind.speedKmh.isNaN()) "Prędkość: %.1f km/h".format(ui.wind.speedKmh) else "Prędkość: —",
-                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold
+                    if (!ui.wind.speedKmh.isNaN())
+                        "Prędkość: %.1f km/h".format(ui.wind.speedKmh)
+                    else "Prędkość: —",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     if (dirTo >= 0) "Kierunek: ${dirTo}° (dokąd wieje)" else "Kierunek: —",
@@ -208,7 +239,10 @@ private fun WindCard(ui: UiState) {
                 )
             }
             if (!ui.wind.gustKmh.isNaN()) {
-                Text("Porywy: %.1f km/h".format(ui.wind.gustKmh), modifier = Modifier.padding(top = 4.dp))
+                Text(
+                    "Porywy: %.1f km/h".format(ui.wind.gustKmh),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
             if (dirTo >= 0) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -243,7 +277,8 @@ private fun MetricsRow(
     }
 }
 
-@Composable private fun Metric(label: String, value: String) {
+@Composable
+private fun Metric(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.labelMedium)
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -269,7 +304,7 @@ fun RidesScreen(vm: RideViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 6.dp)
-                    .clickable { /* podgląd GPX – na później */ }
+                    .clickable { /* TODO: podgląd GPX */ }
             ) {
                 Column(Modifier.padding(12.dp)) {
                     Text(r.title, fontWeight = FontWeight.Bold)
@@ -280,7 +315,9 @@ fun RidesScreen(vm: RideViewModel) {
                         )
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { ShareUtil.shareGpx(ctx, r.filePath) }) { Text("Udostępnij GPX") }
+                        TextButton(onClick = { ShareUtil.shareGpx(ctx, r.filePath) }) {
+                            Text("Udostępnij GPX")
+                        }
                     }
                 }
             }
@@ -296,7 +333,7 @@ private fun rememberLauncherForPermissions(vm: RideViewModel): () -> Unit {
             ActivityResultContracts.RequestMultiplePermissions()
         ) { map ->
             val granted = map[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                    map[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+                map[Manifest.permission.ACCESS_COARSE_LOCATION] == true
             vm.setLocationPermission(granted)
         }
     }
@@ -313,9 +350,13 @@ private fun rememberLauncherForPermissions(vm: RideViewModel): () -> Unit {
 
 private fun startLocationService(ctx: Context) {
     ContextCompat.startForegroundService(
-        ctx, Intent(ctx, LocationService::class.java).apply { action = LocationService.ACTION_START }
+        ctx,
+        Intent(ctx, LocationService::class.java).apply { action = LocationService.ACTION_START }
     )
 }
+
 private fun stopLocationService(ctx: Context) {
-    ctx.startService(Intent(ctx, LocationService::class.java).apply { action = LocationService.ACTION_STOP })
+    ctx.startService(
+        Intent(ctx, LocationService::class.java).apply { action = LocationService.ACTION_STOP }
+    )
 }
