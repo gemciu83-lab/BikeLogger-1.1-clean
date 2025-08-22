@@ -22,13 +22,29 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Uruchamiamy Gradle BEZ cache i BEZ wrappera
-      - name: Build Debug APK (no cache)
+      # Do-INSTALUJ platformę i build-tools wymagane przez projekt
+      - name: Install Android platforms and build-tools
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      # Jednorazowo wygeneruj Gradle Wrapper (bo nie ma gradlew w repo)
+      - name: Generate Gradle Wrapper (if missing)
         uses: gradle/gradle-build-action@v3
         with:
           gradle-version: 8.7
-          arguments: assembleDebug --stacktrace
+          arguments: wrapper
           cache-disabled: true
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # Zalecana akcja do konfiguracji/cache Gradle (bez uruchamiania z 'arguments')
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
